@@ -10,7 +10,7 @@ local inputBoxPosition = UDim2.new(0.324,0,0.883,0)
 local inputBoxPositionOffSight = UDim2.new(0.324, 0, 2.883, 0)
 local errorSubfix = " --MenuMaker"
 
-local menuSize = UDim2.new(0,400,0,280) --UDim2.new(0.434,0,0.563,0)
+local menuSize = UDim2.new(0,450,0,300) --UDim2.new(0.434,0,0.563,0)
 
 --- local functions
 
@@ -61,6 +61,7 @@ end
 local function createMainMenu (self) --If anyone is reading this... i'm terribly sorry.
 	if not self then err() return end
 	self.Gui = Instance.new("ScreenGui", self.Player.PlayerGui)
+	self.Gui.Name = self.Title.."Menu#"
 	self.Gui.ResetOnSpawn = false
 	
 	self.Main = createGuiInstance("Frame", "Main", self.Gui, UDim2.new(1,0,1,0), UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 1, false, 1, self)
@@ -91,7 +92,8 @@ end
 local function optionInitializer (self, guiObj, keyBind, toggleButton, funcOn, funcOff, params : {any})
 	local key = if keyBind then keyBind else guiObj
 	self.Parent.Functions[key] = function() -- sets the function with the keybind as key
-
+		if self.PlayerIsDead then print("plr is dead.") return end
+		
 		if funcOff == nil then -- Non-toggle option, because no "funcOff" given
 			funcOn(if params and params[1] == "Input" then if self.IsInputSeeking then self.textBox.Text else params[2].Text else params)
 			tweenColor(guiObj, self.Parent.FourthColor)
@@ -134,7 +136,8 @@ function MenuMaker.newMenu(MenuData : {Title : string, PrimaryColor : Color3, Se
 	if not MenuData then err("MenuData must be provided.") return end
 	local self = setmetatable({}, MenuMaker)
 	self.Player = game.Players.LocalPlayer
-	self.Title = MenuData[1] -- change to keys
+	self.Character = self.Player.Character
+	self.Title = MenuData[1] --verander naar keys pls
 	self.PrimaryColor = MenuData[2]
 	self.SecondaryColor = MenuData[3]
 	self.ThirdColor = MenuData[4]
@@ -144,18 +147,35 @@ function MenuMaker.newMenu(MenuData : {Title : string, PrimaryColor : Color3, Se
 	
 	self.ActiveOptions = nil
 	self.Functions = {}
+	self.PlayerIsDead = false
 	
 	createMainMenu(self)
 	self.ExitButton.MouseButton1Click:Connect(function()
 		self:Toggle()
 	end)
 	
-	uis.InputBegan:Connect(function(input, gp)
+	uis.InputBegan:Connect(function(input, gp) -- Connection for options that have keys bound to them
 		if gp then return end
 		if self.Functions[input.KeyCode] then
-			self.Functions[input.KeyCode]()
+			self.Functions[input.KeyCode]() -- Fires the function with the keybind as key if it exists
 		end
 	end)
+	
+	local con
+	local function setupPlayerDeathConnection() -- To make sure nothing glitches out when the player dies
+		con = self.Character.Humanoid.Died:Connect(function()
+			con:Disconnect()
+			self.PlayerIsDead = true
+			self.Gui.Enabled = false
+
+			self.Character = self.Player.CharacterAdded:Wait()
+			self.PlayerIsDead = false
+			self.Gui.Enabled = true
+			setupPlayerDeathConnection()  -- Set the connection up again, because it's a new character
+		end)
+	end
+	
+	setupPlayerDeathConnection()
 	return self
 end
 
@@ -207,10 +227,11 @@ function MenuMaker:CreateCategory(name : string, layoutOrder : number) : {any}
 	return category
 end
 
+-- "Inherits" from the basic category, but adds an input box and some custom properties
 function MenuMaker:CreateInputCategory(name : string, layoutOrder : number, inputTitle : string, placeholderText : string) : {any}
-	local category = self:CreateCategory(name, layoutOrder)
-	category.OptionLister.Size = UDim2.new(0.652,0,0.711,0)
-	category.IsInputSeeking = true
+	local category = self:CreateCategory(name, layoutOrder) -- "Inheritance"
+	category.OptionLister.Size = UDim2.new(0.652,0,0.711,0) -- Shrinks the frame to make room for an input box
+	category.IsInputSeeking = true -- Sets a custom property so the function "optionInitializer" knows that it needs to ignore an option's own inputBox
 	
 	category.inputBox = createGuiInstance("Frame", name.."InputBox", self.Menu, UDim2.new(0.652,0,0.083,0), UDim2.new(0.324,0,0.883,0), Vector2.new(0,0), 3, true, 0, self)
 	category.inputBox.Position = inputBoxPositionOffSight
@@ -223,6 +244,7 @@ function MenuMaker:CreateInputCategory(name : string, layoutOrder : number, inpu
 	category.textBox = createGuiInstance("TextBox", "TextBox", category.inputBox, UDim2.new(0.35,0,1,0), UDim2.new(0.809,0,0,0), Vector2.new(0.5,0), 2, false, 1, self)
 	category.textBox.Text = ""
 	category.textBox.PlaceholderText = placeholderText
+	category.textBox.TextSize = 10
 	
 	addPadding(category.inputBox, 10,10,0,0)
 	return category
@@ -277,21 +299,24 @@ function MenuMaker:Toggle() -- Main Menu
 	local visible = self.Menu.Visible
 	
 	if visible then
-		TweenService:Create(self.Menu, tweenInfo, {Position = UDim2.new(0.5,0,1.5,0)}):Play()
-		TweenService:Create(self.Menu, tweenInfo, {Size = UDim2.new(0,0,0,0)}):Play()
+		TweenService:Create(self.Menu, tweenInfo, {Position = UDim2.new(0.5,0,1.5,0)}):Play() -- Tweens the menu
+		TweenService:Create(self.Menu, tweenInfo, {Size = UDim2.new(0,0,0,0)}):Play() -----------^  
+		
+		------------------------------------------
 		self.Menu.Visible = not visible
 		self.OpenButton = createGuiInstance("TextButton", "OpenButton", self.Main, UDim2.new(0.045,0,0.077,0), UDim2.new(-1,0,0.463,0), Vector2.new(0,0), 3, true, 0, self)
 		self.OpenButton.Text = "Open"
 		TweenService:Create(self.OpenButton, tweenInfo, {Position = UDim2.new(0,0,0.463,0)}):Play()
+		-- This section creates a button to open the menu again, and tweens it on screen
 		
-		task.delay(tweenInfo.Time, function()
+		task.delay(tweenInfo.Time, function() -- Sets up the button after the tween is completed to prevent bugs (lazy approach)
 			local con
 			con = self.OpenButton.MouseButton1Click:Connect(function()
 				self:Toggle()
 				con:Disconnect()
 				con = nil
-				TweenService:Create(self.OpenButton, tweenInfo, {Position = UDim2.new(-1,0,0.463,0)}):Play()
-				task.delay(tweenInfo.Time, function() self.OpenButton:Destroy(); end)
+				TweenService:Create(self.OpenButton, tweenInfo, {Position = UDim2.new(-1,0,0.463,0)}):Play() -- Tweens the button away
+				task.delay(tweenInfo.Time, function() self.OpenButton:Destroy(); end) -- Destroys the button after it finished tweening
 			end)
 		end)
 	elseif not visible then
@@ -308,8 +333,8 @@ function MenuMaker:ToggleOptionLister (GuiObj : GuiObject, category : {any}) -- 
 	local newState = not acitve
 	
 	if newState then		
+		
 		if self.ActiveOptionLister and self.ActiveOptionLister ~= GuiObj then
-
 			TweenService:Create(self.ActiveOptionLister.OptionLister, tweenInfo, {Position = optionListerPositionOffSight}):Play()
 			if self.ActiveOptionLister.IsInputSeeking then
 				TweenService:Create(self.ActiveOptionLister.inputBox, tweenInfo, {Position = inputBoxPositionOffSight}):Play()
