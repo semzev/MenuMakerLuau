@@ -1,9 +1,3 @@
---[[
-	MenuMaker, v1
-	Scripted by: Sem (szstarwarsszsz)
-	Last Updated: 10/08/2025
-]]
-
 local MenuMaker = {}
 MenuMaker.__index = MenuMaker
 
@@ -15,6 +9,8 @@ local optionListerPositionOffSight = UDim2.new(1.028,0,0.149,0)
 local inputBoxPosition = UDim2.new(0.324,0,0.883,0)
 local inputBoxPositionOffSight = UDim2.new(0.324, 0, 2.883, 0)
 local errorSubfix = " --MenuMaker"
+
+local menuSize = UDim2.new(0,400,0,280) --UDim2.new(0.434,0,0.563,0)
 
 --- local functions
 
@@ -58,7 +54,7 @@ local function createGuiInstance (Type : GuiObject, Name : string, Parent : any,
 	obj.BackgroundTransparency = Transparency
 	obj.BackgroundColor3 = if IsPrimary == 1 then self.PrimaryColor elseif IsPrimary == 2 then self.SecondaryColor else self.ThirdColor
 	if RoundifyObj then roundify(obj) end
-	if obj:IsA("TextButton") or obj:IsA("TextLabel") then obj.Font = self.Font obj.TextColor3 = self.TextColor end
+	if obj:IsA("TextButton") or obj:IsA("TextLabel") then obj.Font = self.Font; obj.TextColor3 = self.TextColor; obj.TextScaled = true; end
 	return obj
 end
 
@@ -68,10 +64,10 @@ local function createMainMenu (self) --If anyone is reading this... i'm terribly
 	self.Gui.ResetOnSpawn = false
 	
 	self.Main = createGuiInstance("Frame", "Main", self.Gui, UDim2.new(1,0,1,0), UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 1, false, 1, self)
-	self.Menu = createGuiInstance("Frame", "Menu", self.Main, UDim2.new(0,500,0,350), UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 1, true, 0, self)
-	self.Categories = createGuiInstance("Frame", "Categories", self.Menu, UDim2.new(0,138,0,286), UDim2.new(0.024,0,0.149,0), Vector2.new(0,0), 2, true, 0, self)
-	self.ExitButton = createGuiInstance("TextButton", "ExitButton", self.Menu, UDim2.new(0,40,0,40), UDim2.new(1,0,0,0), Vector2.new(1,0), 3, false, 1, self)
-	self.TitleLabel = createGuiInstance("TextLabel", "Title", self.Menu, UDim2.new(0,500,0,40), UDim2.new(0.5,0,0,0), Vector2.new(0.5,0), 3, true, 0, self)
+	self.Menu = createGuiInstance("Frame", "Menu", self.Main, menuSize, UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 1, true, 0, self)
+	self.Categories = createGuiInstance("Frame", "Categories", self.Menu, UDim2.new(0.276,0,0.817,0), UDim2.new(0.024,0,0.149,0), Vector2.new(0,0), 2, true, 0, self)
+	self.ExitButton = createGuiInstance("TextButton", "ExitButton", self.Menu, UDim2.new(0.08,0,0.114,0), UDim2.new(1,0,0,0), Vector2.new(1,0), 3, false, 1, self)
+	self.TitleLabel = createGuiInstance("TextLabel", "Title", self.Menu, UDim2.new(1,0,0.114,10), UDim2.new(0.5,0,0,0), Vector2.new(0.5,0), 3, true, 0, self)
 	
 	self.Menu.ClipsDescendants = true
 	
@@ -138,7 +134,7 @@ function MenuMaker.newMenu(MenuData : {Title : string, PrimaryColor : Color3, Se
 	if not MenuData then err("MenuData must be provided.") return end
 	local self = setmetatable({}, MenuMaker)
 	self.Player = game.Players.LocalPlayer
-	self.Title = MenuData[1]
+	self.Title = MenuData[1] -- change to keys
 	self.PrimaryColor = MenuData[2]
 	self.SecondaryColor = MenuData[3]
 	self.ThirdColor = MenuData[4]
@@ -170,7 +166,7 @@ function MenuMaker:CreateCategory(name : string, layoutOrder : number) : {any}
 	category.Name = name
 	category.IsInputSeeking = false
 	
-	category.GuiObject = createGuiInstance("Frame", name, self.Categories, UDim2.new(1,0,0,30), UDim2.new(0,0,0,0), Vector2.new(0,0), 3, true, 0, self)
+	category.GuiObject = createGuiInstance("Frame", name, self.Categories, UDim2.new(1,0,0.105,0), UDim2.new(0,0,0,0), Vector2.new(0,0), 3, true, 0, self)
 	category.GuiObject.LayoutOrder = layoutOrder
 	
 	category.OpenButton = createGuiInstance("TextButton", "OpenButton", category.GuiObject, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Vector2.new(0,0), 2, false, 1, self)
@@ -201,7 +197,7 @@ function MenuMaker:CreateCategory(name : string, layoutOrder : number) : {any}
 	local function updateCanvas()
 		category.OptionLister.CanvasSize = UDim2.new(
 			0, 0,
-			0, listLayout.AbsoluteContentSize.Y
+			0, listLayout.AbsoluteContentSize.Y + 20
 		)
 	end
 
@@ -278,18 +274,30 @@ function MenuMaker:CreateInputOption (name : string, keyBind : Enum.KeyCode, pla
 end
 
 function MenuMaker:Toggle() -- Main Menu
-	local visible = self.Main.Visible
+	local visible = self.Menu.Visible
 	
 	if visible then
-		TweenService:Create(self.Main, tweenInfo, {Position = UDim2.new(0.5,0,1.5,0)}):Play()
-		TweenService:Create(self.Main, tweenInfo, {Size = UDim2.new(0,0,0,0)}):Play()
+		TweenService:Create(self.Menu, tweenInfo, {Position = UDim2.new(0.5,0,1.5,0)}):Play()
+		TweenService:Create(self.Menu, tweenInfo, {Size = UDim2.new(0,0,0,0)}):Play()
+		self.Menu.Visible = not visible
+		self.OpenButton = createGuiInstance("TextButton", "OpenButton", self.Main, UDim2.new(0.045,0,0.077,0), UDim2.new(-1,0,0.463,0), Vector2.new(0,0), 3, true, 0, self)
+		self.OpenButton.Text = "Open"
+		TweenService:Create(self.OpenButton, tweenInfo, {Position = UDim2.new(0,0,0.463,0)}):Play()
+		
 		task.delay(tweenInfo.Time, function()
-			visible = not visible
+			local con
+			con = self.OpenButton.MouseButton1Click:Connect(function()
+				self:Toggle()
+				con:Disconnect()
+				con = nil
+				TweenService:Create(self.OpenButton, tweenInfo, {Position = UDim2.new(-1,0,0.463,0)}):Play()
+				task.delay(tweenInfo.Time, function() self.OpenButton:Destroy(); end)
+			end)
 		end)
 	elseif not visible then
-		visible = visible
-		TweenService:Create(self.Main, tweenInfo, {Position = UDim2.new(0.5,0,0.5,0)}):Play()
-		TweenService:Create(self.Menu, tweenInfo, {Size = UDim2.new(0,500,0,350)}):Play()
+		self.Menu.Visible = not visible
+		TweenService:Create(self.Menu, tweenInfo, {Position = UDim2.new(0.5,0,0.5,0)}):Play()
+		TweenService:Create(self.Menu, tweenInfo, {Size = menuSize}):Play()
 	end
 	return
 end
