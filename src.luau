@@ -1,7 +1,7 @@
 --[[
 	MenuMaker, v1
 	Scripted by: Sem (szstarwarsszsz)
-	Last Updated: 09/08/2025
+	Last Updated: 10/08/2025
 ]]
 
 local MenuMaker = {}
@@ -216,7 +216,7 @@ function MenuMaker:CreateInputCategory(name : string, layoutOrder : number, inpu
 	category.OptionLister.Size = UDim2.new(0.652,0,0.711,0)
 	category.IsInputSeeking = true
 	
-	category.inputBox = createGuiInstance("Frame", name.."InputBox", self.Menu, UDim2.new(0.652,0,0.083,0), UDim2.new(0.324,0,0.883,0), Vector2.new(0,0), 2, true, 0, self)
+	category.inputBox = createGuiInstance("Frame", name.."InputBox", self.Menu, UDim2.new(0.652,0,0.083,0), UDim2.new(0.324,0,0.883,0), Vector2.new(0,0), 3, true, 0, self)
 	category.inputBox.Position = inputBoxPositionOffSight
 	
 	category.title = createGuiInstance("TextLabel", "Title", category.inputBox, UDim2.new(0.35,0,1,0), UDim2.new(0,0,0,0), Vector2.new(0,0), 2, false, 1, self)
