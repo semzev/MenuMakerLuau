@@ -19,9 +19,11 @@ local function err(message : string)
 	return
 end
 
-local function roundify(obj : GuiObject)
-	local corner = Instance.new("UICorner", obj)
-	corner.CornerRadius = UDim.new(0, 12)
+local function roundify(obj : GuiObject, self)
+	if self.RoundCorners then
+		local corner = Instance.new("UICorner", obj)
+		corner.CornerRadius = UDim.new(0, 12)
+	end
 	return
 end
 
@@ -39,8 +41,18 @@ local function tweenColor(guiObj : GuiObject, targetColor : Color3)
 	return
 end
 
-local function tweenCorner(corner : UICorner, state)
-	TweenService:Create(corner, tweenInfo, {CornerRadius = if state then UDim.new(0,9) else UDim.new(0,12)}):Play()
+local function hover(guiObj : GuiObject, state : boolean, self)
+	if self.RoundCorners then
+		if guiObj:FindFirstChildWhichIsA("UICorner") then
+			TweenService:Create(guiObj.UICorner, tweenInfo, {CornerRadius = if state then UDim.new(0,9) else UDim.new(0,12)}):Play()
+		end
+	else
+		if state then
+			TweenService:Create(guiObj, tweenInfo, {Size = UDim2.new(1.05,0,0.105,0)}):Play()
+		elseif not state then
+			TweenService:Create(guiObj, tweenInfo, {Size = UDim2.new(1,0,0.105,0)}):Play()
+		end
+	end
 	return
 end
 
@@ -52,9 +64,10 @@ local function createGuiInstance (Type : GuiObject, Name : string, Parent : any,
 	obj.Position = Position
 	obj.AnchorPoint = AnchorPoint
 	obj.BackgroundTransparency = Transparency
-	obj.BackgroundColor3 = if IsPrimary == 1 then self.PrimaryColor elseif IsPrimary == 2 then self.SecondaryColor else self.ThirdColor
-	if RoundifyObj then roundify(obj) end
-	if obj:IsA("TextButton") or obj:IsA("TextLabel") then obj.Font = self.Font; obj.TextColor3 = self.TextColor; obj.TextScaled = true; end
+	obj:SetAttribute("ColorGroup",  if IsPrimary == 1 then self.BackgroundColor elseif IsPrimary == 2 then self.PrimaryColor else self.SecondaryColor)
+	obj.BackgroundColor3 = obj:GetAttribute("ColorGroup")
+	if RoundifyObj then roundify(obj, self) end
+	if obj:IsA("TextButton") or obj:IsA("TextLabel") then obj.Font = self.Font; obj.TextColor3 = self.FontColor; obj.TextScaled = true; end
 	return obj
 end
 
@@ -96,9 +109,9 @@ local function optionInitializer (self, guiObj, keyBind, toggleButton, funcOn, f
 		
 		if funcOff == nil then -- Non-toggle option, because no "funcOff" given
 			funcOn(if params and params[1] == "Input" then if self.IsInputSeeking then self.textBox.Text else params[2].Text else params)
-			tweenColor(guiObj, self.Parent.FourthColor)
+			tweenColor(guiObj, self.Parent.SelectedColor)
 			task.delay(tweenInfo.Time / 5, function()
-				tweenColor(guiObj, self.Parent.ThirdColor)
+				tweenColor(guiObj, self.Parent.SecondaryColor)
 			end)
 		end
 		
@@ -108,10 +121,10 @@ local function optionInitializer (self, guiObj, keyBind, toggleButton, funcOn, f
 
 			if not toggled then
 				funcOn(if params and params[1] == "Input" then if self.IsInputSeeking then self.textBox.Text else params[2].Text else params)
-				tweenColor(guiObj, self.Parent.FourthColor)
+				tweenColor(guiObj, self.Parent.SelectedColor)
 			elseif toggled then
 				funcOff(if params and params[1] == "Input" then if self.IsInputSeeking then self.textBox.Text else params[2].Text else params)
-				tweenColor(guiObj, self.Parent.ThirdColor)
+				tweenColor(guiObj, self.Parent.SecondaryColor)
 			end
 		end
 	end
@@ -121,29 +134,33 @@ local function optionInitializer (self, guiObj, keyBind, toggleButton, funcOn, f
 	end)
 	
 	toggleButton.MouseEnter:Connect(function()
-		tweenCorner(guiObj.UICorner, true)
+		hover(guiObj, true, self)
 	end)
 	
 	toggleButton.MouseLeave:Connect(function()
-		tweenCorner(guiObj.UICorner, false)
+		hover(guiObj, false, self)
 	end)
 	return
 end
 
 --- Global functions
 
-function MenuMaker.newMenu(MenuData : {Title : string, PrimaryColor : Color3, SecondaryColor : Color3, ThirdColor : Color3, FourthColor : Color3, TextColor : Color3, Font : Enum.Font }) : ScreenGui
+function MenuMaker.newMenu(MenuData : {Title : string, BackgroundColor : Color3, PrimaryColor : Color3, SecondaryColor : Color3, SelectedColor : Color3, TextColor : Color3, Font : Enum.Font, RoundCorners : boolean }) : ScreenGui
 	if not MenuData then err("MenuData must be provided.") return end
 	local self = setmetatable({}, MenuMaker)
 	self.Player = game.Players.LocalPlayer
 	self.Character = self.Player.Character
-	self.Title = MenuData[1] --verander naar keys pls
-	self.PrimaryColor = MenuData[2]
-	self.SecondaryColor = MenuData[3]
-	self.ThirdColor = MenuData[4]
-	self.FourthColor = MenuData[5]
-	self.TextColor = MenuData[6]
-	self.Font = MenuData[7]
+	
+	print(MenuData)
+	self.Title = MenuData["Title"]
+	self.BackgroundColor = MenuData["BackgroundColor"]
+	self.PrimaryColor = MenuData["PrimaryColor"]
+	self.SecondaryColor = MenuData["SecondaryColor"]
+	self.SelectedColor = MenuData["SelectedColor"]
+	self.HoverColor = MenuData["HoverColor"]
+	self.FontColor = MenuData["FontColor"]
+	self.Font = MenuData["Font"]
+	self.RoundCorners = MenuData["RoundCorners"]
 	
 	self.ActiveOptions = nil
 	self.Functions = {}
@@ -208,10 +225,10 @@ function MenuMaker:CreateCategory(name : string, layoutOrder : number) : {any}
 		self:ToggleOptionLister(category.OptionLister, category)
 	end)
 	category.OpenButton.MouseEnter:Connect(function()
-		tweenCorner(category.GuiObject.UICorner, true)
+		hover(category.GuiObject, true, self)
 	end)
 	category.OpenButton.MouseLeave:Connect(function()
-		tweenCorner(category.GuiObject.UICorner, false)
+		hover(category.GuiObject, false, self)
 	end)
 	
 	local function updateCanvas()
@@ -251,7 +268,7 @@ function MenuMaker:CreateInputCategory(name : string, layoutOrder : number, inpu
 end
 
 function MenuMaker:CreateOptionFrame (name : string, keyBind : Enum.KeyCode, layoutOrder : number) : (Frame, TextButton)
-	local guiObj = createGuiInstance("Frame", name, self.OptionLister, UDim2.new(1, 0, 0, 27), UDim2.new(0,0,0,0), Vector2.new(0,0), 3, true, 0, self.Parent)
+	local guiObj = createGuiInstance("Frame", name, self.OptionLister, UDim2.new(1,0,0.105,0), UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 3, true, 0, self.Parent)
 	guiObj.LayoutOrder = layoutOrder
 	addPadding(guiObj, 10,10,0,0)
 	
@@ -341,13 +358,13 @@ function MenuMaker:ToggleOptionLister (GuiObj : GuiObject, category : {any}) -- 
 			end
 			
 			for _, v in self.Categories:GetChildren() do
-				if v:IsA("Frame") then tweenColor(v, self.ThirdColor) end
+				if v:IsA("Frame") then tweenColor(v, self.SecondaryColor) end
 				self.ActiveOptionLister.OptionLister:SetAttribute("Active", false)
 			end
 		end
 		
 		self.ActiveOptionLister = category
-		tweenColor(category.GuiObject, self.FourthColor)
+		tweenColor(category.GuiObject, self.SelectedColor)
 		TweenService:Create(GuiObj, tweenInfo, {Position = optionListerPosition}):Play()
 		if category.IsInputSeeking then
 			TweenService:Create(self.ActiveOptionLister.inputBox, tweenInfo, {Position = inputBoxPosition}):Play()
@@ -355,7 +372,7 @@ function MenuMaker:ToggleOptionLister (GuiObj : GuiObject, category : {any}) -- 
 
 		
 	elseif not newState then
-		tweenColor(category.GuiObject, self.ThirdColor)
+		tweenColor(category.GuiObject, self.SecondaryColor)
 		TweenService:Create(GuiObj, tweenInfo, {Position = 	optionListerPositionOffSight}):Play()
 		if category.IsInputSeeking then
 			TweenService:Create(self.ActiveOptionLister.inputBox, tweenInfo, {Position = inputBoxPositionOffSight}):Play()
@@ -364,6 +381,19 @@ function MenuMaker:ToggleOptionLister (GuiObj : GuiObject, category : {any}) -- 
 
 	GuiObj:SetAttribute("Active", not acitve)
 	return
+end
+
+function MenuMaker:Destroy()
+	self.Gui:Destroy()
+	self = nil
+end
+
+function MenuMaker:Notify(NotificationData : {Title : string, Description : string, Duration : number?})
+	game.StarterGui:SetCore("SendNotification", {
+		Title = NotificationData["Title"],
+		Text = NotificationData["Description"],
+		Duration = NotificationData["Duration"] or 2
+	})
 end
 
 ---
