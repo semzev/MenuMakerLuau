@@ -3,6 +3,7 @@ MenuMaker.__index = MenuMaker
 
 local TweenService = game:GetService("TweenService")
 local uis = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
 local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Exponential)
 local optionListerPosition = UDim2.new(0.324,0,0.149,0)
 local optionListerPositionOffSight = UDim2.new(1.028,0,0.149,0)
@@ -11,6 +12,7 @@ local inputBoxPositionOffSight = UDim2.new(0.324, 0, 2.883, 0)
 local errorSubfix = " --MenuMaker"
 
 local menuSize = UDim2.new(0,450,0,300) --UDim2.new(0.434,0,0.563,0)
+local hoverTipSize = UDim2.new(0,280,0,35)
 
 --- local functions
 
@@ -56,6 +58,24 @@ local function hover(guiObj : GuiObject, state : boolean, self)
 	return
 end
 
+local hoverTipConnection
+local function hoverTip(state : boolean, text : string, self : {any})
+	local hoverTip = self.HoverTip
+	local mouse = game.Players.LocalPlayer:GetMouse()
+	
+	if state then
+		hoverTip.Text = text
+		hoverTipConnection = runService.RenderStepped:Connect(function()
+			hoverTip.Position = UDim2.new(0, mouse.X, 0, mouse.Y) 
+		end)
+		hoverTip.Visible = true
+	else
+		if hoverTipConnection then hoverTipConnection:Disconnect() end
+		hoverTip.Visible = false
+		hoverTip.Text = ""
+	end
+	
+end
 
 local function createGuiInstance (Type : GuiObject, Name : string, Parent : any, Size : UDim2, Position : UDim2, AnchorPoint : Vector2, IsPrimary : number, RoundifyObj : boolean, Transparency : number, self) : GuiObject
 	local obj = Instance.new(Type, Parent)
@@ -67,14 +87,14 @@ local function createGuiInstance (Type : GuiObject, Name : string, Parent : any,
 	obj:SetAttribute("ColorGroup",  if IsPrimary == 1 then self.BackgroundColor elseif IsPrimary == 2 then self.PrimaryColor else self.SecondaryColor)
 	obj.BackgroundColor3 = obj:GetAttribute("ColorGroup")
 	if RoundifyObj then roundify(obj, self) end
-	if obj:IsA("TextButton") or obj:IsA("TextLabel") then obj.Font = self.Font; obj.TextColor3 = self.FontColor; obj.TextScaled = true; end
+	if obj:IsA("TextButton") or obj:IsA("TextLabel") then obj.Font = self.Font; obj.TextColor3 = self.FontColor; end
 	return obj
 end
 
 local function createMainMenu (self) --If anyone is reading this... i'm terribly sorry.
 	if not self then err() return end
 	self.Gui = Instance.new("ScreenGui", self.Player.PlayerGui)
-	self.Gui.Name = self.Title.."Menu#"
+	self.Gui.Name = "$#"..self.Title.."#$"
 	self.Gui.ResetOnSpawn = false
 	
 	self.Main = createGuiInstance("Frame", "Main", self.Gui, UDim2.new(1,0,1,0), UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 1, false, 1, self)
@@ -82,6 +102,10 @@ local function createMainMenu (self) --If anyone is reading this... i'm terribly
 	self.Categories = createGuiInstance("Frame", "Categories", self.Menu, UDim2.new(0.276,0,0.817,0), UDim2.new(0.024,0,0.149,0), Vector2.new(0,0), 2, true, 0, self)
 	self.ExitButton = createGuiInstance("TextButton", "ExitButton", self.Menu, UDim2.new(0.08,0,0.114,0), UDim2.new(1,0,0,0), Vector2.new(1,0), 3, false, 1, self)
 	self.TitleLabel = createGuiInstance("TextLabel", "Title", self.Menu, UDim2.new(1,0,0.114,10), UDim2.new(0.5,0,0,0), Vector2.new(0.5,0), 3, true, 0, self)
+	self.HoverTip = createGuiInstance("TextLabel", "HoverTip", self.Main, hoverTipSize, UDim2.new(0,0,0,0), Vector2.new(0,1), 1, true, 0.4, self)
+	self.HoverTip.BackgroundColor3 = Color3.new(0.4, 0.4, 0.4)
+	self.HoverTip.TextSize = 10
+	self.HoverTip.Visible = false
 	
 	self.Menu.ClipsDescendants = true
 	
@@ -102,12 +126,25 @@ local function createMainMenu (self) --If anyone is reading this... i'm terribly
 	return
 end
 
-local function optionInitializer (self, guiObj, keyBind, toggleButton, funcOn, funcOff, params : {any})
+local function optionInitializerHelper(params, self)
+	if params and params[1] == "Input" then
+		if self.IsInputSeeking then
+			if self.textBox.Text == "" or self.textBox.Text == nil then return false end
+		else
+			if params[2].Text == "" then return false end
+		end
+	end
+	return true
+end
+
+local function optionInitializer (self, guiObj, keyBind, hoverTipText, toggleButton, funcOn, funcOff, params : {any})
 	local key = if keyBind then keyBind else guiObj
 	self.Parent.Functions[key] = function() -- sets the function with the keybind as key
 		if self.PlayerIsDead then print("plr is dead.") return end
 		
+		
 		if funcOff == nil then -- Non-toggle option, because no "funcOff" given
+			if optionInitializerHelper(params, self) == false then return end
 			funcOn(if params and params[1] == "Input" then if self.IsInputSeeking then self.textBox.Text else params[2].Text else params)
 			tweenColor(guiObj, self.Parent.SelectedColor)
 			task.delay(tweenInfo.Time / 5, function()
@@ -120,6 +157,7 @@ local function optionInitializer (self, guiObj, keyBind, toggleButton, funcOn, f
 			toggleButton:SetAttribute("Active", not toggled)
 
 			if not toggled then
+				if optionInitializerHelper(params, self) == false then return end
 				funcOn(if params and params[1] == "Input" then if self.IsInputSeeking then self.textBox.Text else params[2].Text else params)
 				tweenColor(guiObj, self.Parent.SelectedColor)
 			elseif toggled then
@@ -133,12 +171,23 @@ local function optionInitializer (self, guiObj, keyBind, toggleButton, funcOn, f
 		self.Parent.Functions[key]()
 	end)
 	
+	local hovering = false
 	toggleButton.MouseEnter:Connect(function()
+		hovering = true
 		hover(guiObj, true, self)
+		
+		task.delay(0.6, function()
+			if hovering then
+				if hoverTipText ~= "" then hoverTip(true, hoverTipText, self) end
+			end
+		end)
+
 	end)
 	
 	toggleButton.MouseLeave:Connect(function()
+		hovering = false
 		hover(guiObj, false, self)
+		hoverTip(false, "", self)
 	end)
 	return
 end
@@ -150,8 +199,7 @@ function MenuMaker.newMenu(MenuData : {Title : string, BackgroundColor : Color3,
 	local self = setmetatable({}, MenuMaker)
 	self.Player = game.Players.LocalPlayer
 	self.Character = self.Player.Character
-	
-	print(MenuData)
+
 	self.Title = MenuData["Title"]
 	self.BackgroundColor = MenuData["BackgroundColor"]
 	self.PrimaryColor = MenuData["PrimaryColor"]
@@ -282,7 +330,7 @@ function MenuMaker:CreateOptionFrame (name : string, keyBind : Enum.KeyCode, lay
 	Title.TextXAlignment = Enum.TextXAlignment.Left
 	self.Parent[name.."Option"] = guiObj
 	
-	if keyBind then
+	if keyBind ~= nil then
 		local keyBindDisplayer = createGuiInstance("TextLabel", "KeyBind", guiObj, UDim2.new(0.1,0,1,0), UDim2.new(1,0,0,0), Vector2.new(1,0), 2, false, 1, self.Parent)
 		keyBindDisplayer.TextSize = 12
 		keyBindDisplayer.Text = keyBind.Name
@@ -291,14 +339,16 @@ function MenuMaker:CreateOptionFrame (name : string, keyBind : Enum.KeyCode, lay
 	return guiObj, toggleButton
 end
 
-function MenuMaker:CreateToggleOption(name : string, keyBind : Enum.KeyCode, layoutOrder : number, funcOn : () -> any, funcOff : () -> any)
+function MenuMaker:CreateToggleOption(name : string, keyBind : Enum.KeyCode, hoverTip : string, layoutOrder : number, funcOn : () -> any, funcOff : () -> any)
+	if hoverTip == nil then hoverTip = "" end
 	local guiObj, toggleButton = self:CreateOptionFrame(name, keyBind, layoutOrder)
 	
-	optionInitializer(self, guiObj, keyBind, toggleButton, funcOn, funcOff)
+	optionInitializer(self, guiObj, keyBind, hoverTip, toggleButton, funcOn, funcOff)
 	return
 end
 
-function MenuMaker:CreateInputOption (name : string, keyBind : Enum.KeyCode, placeholderText : string, layoutOrder : number,  funcOn : () -> any, funcOff : () -> any)
+function MenuMaker:CreateInputOption (name : string, keyBind : Enum.KeyCode, hoverTip : string, placeholderText : string, layoutOrder : number,  funcOn : () -> any, funcOff : () -> any)
+	if hoverTip == nil then hoverTip = "" end
 	local guiObj, toggleButton = self:CreateOptionFrame(name, keyBind, layoutOrder)
 	
 	local inputButton
@@ -308,7 +358,7 @@ function MenuMaker:CreateInputOption (name : string, keyBind : Enum.KeyCode, pla
 		inputButton.Text = ""
 	end
 	
-	optionInitializer(self, guiObj, keyBind, toggleButton, funcOn, funcOff, {"Input", inputButton})
+	optionInitializer(self, guiObj, keyBind, hoverTip, toggleButton, funcOn, funcOff, {"Input", inputButton})
 	return
 end
 
@@ -392,7 +442,7 @@ function MenuMaker:Notify(NotificationData : {Title : string, Description : stri
 	game.StarterGui:SetCore("SendNotification", {
 		Title = NotificationData["Title"],
 		Text = NotificationData["Description"],
-		Duration = NotificationData["Duration"] or 2
+		Duration = if NotificationData["Duration"] then NotificationData["Duration"] else 2
 	})
 end
 
