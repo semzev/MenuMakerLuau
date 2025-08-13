@@ -14,6 +14,8 @@ local errorSubfix = " --MenuMaker"
 local menuSize = UDim2.new(0,450,0,300) --UDim2.new(0.434,0,0.563,0)
 local hoverTipSize = UDim2.new(0,280,0,35)
 
+local frameSize = UDim2.new(1,0,0,24)
+
 --- local functions
 
 local function err(message : string)
@@ -50,9 +52,9 @@ local function hover(guiObj : GuiObject, state : boolean, self)
 		end
 	else
 		if state then
-			TweenService:Create(guiObj, tweenInfo, {Size = UDim2.new(1.05,0,0.105,0)}):Play()
+			TweenService:Create(guiObj, tweenInfo, {Size = UDim2.new(1.05,0,0,frameSize.Y.Offset)}):Play()
 		elseif not state then
-			TweenService:Create(guiObj, tweenInfo, {Size = UDim2.new(1,0,0.105,0)}):Play()
+			TweenService:Create(guiObj, tweenInfo, {Size = frameSize}):Play()
 		end
 	end
 	return
@@ -251,7 +253,7 @@ function MenuMaker:CreateCategory(name : string, layoutOrder : number) : {any}
 	category.Name = name
 	category.IsInputSeeking = false
 	
-	category.GuiObject = createGuiInstance("Frame", name, self.Categories, UDim2.new(1,0,0.105,0), UDim2.new(0,0,0,0), Vector2.new(0,0), 3, true, 0, self)
+	category.GuiObject = createGuiInstance("Frame", name, self.Categories, frameSize, UDim2.new(0,0,0,0), Vector2.new(0,0), 3, true, 0, self)
 	category.GuiObject.LayoutOrder = layoutOrder
 	
 	category.OpenButton = createGuiInstance("TextButton", "OpenButton", category.GuiObject, UDim2.new(1,0,1,0), UDim2.new(0,0,0,0), Vector2.new(0,0), 2, false, 1, self)
@@ -260,6 +262,7 @@ function MenuMaker:CreateCategory(name : string, layoutOrder : number) : {any}
 	
 	category.OptionLister = createGuiInstance("ScrollingFrame", "OptionLister", self.Menu, UDim2.new(0.652,0,0.817,0), optionListerPositionOffSight, Vector2.new(0,0), 2, true, 0, self)
 	category.OptionLister.ScrollBarThickness = 8
+	category.OptionLister.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	addPadding(category.OptionLister, 8,16,8,8)
 	
 	local listLayout = Instance.new("UIListLayout", category.OptionLister)
@@ -282,7 +285,7 @@ function MenuMaker:CreateCategory(name : string, layoutOrder : number) : {any}
 	local function updateCanvas()
 		category.OptionLister.CanvasSize = UDim2.new(
 			0, 0,
-			0, listLayout.AbsoluteContentSize.Y + 20
+			0, listLayout.AbsoluteContentSize.Y + frameSize.Y.Offset
 		)
 	end
 
@@ -315,8 +318,22 @@ function MenuMaker:CreateInputCategory(name : string, layoutOrder : number, inpu
 	return category
 end
 
+function MenuMaker:CreateDivider(name : string, layoutOrder : number) : Frame
+	local guiObj = createGuiInstance("Frame", name, self.OptionLister, frameSize, UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 2, false, 1, self.Parent)
+	guiObj.LayoutOrder = layoutOrder
+	addPadding(guiObj, 0,10,0,0)
+	
+	local Title = createGuiInstance("TextLabel", "Title", guiObj, UDim2.new(0.35,0,1,0), UDim2.new(0,0,0,0), Vector2.new(0,0), 2, false, 1, self.Parent)
+	Title.TextSize = 18
+	Title.Text = name
+	Title.TextXAlignment = Enum.TextXAlignment.Left
+	self.Parent[name.."Divider"] = guiObj
+	
+	return guiObj
+end
+
 function MenuMaker:CreateOptionFrame (name : string, keyBind : Enum.KeyCode, layoutOrder : number) : (Frame, TextButton)
-	local guiObj = createGuiInstance("Frame", name, self.OptionLister, UDim2.new(1,0,0.105,0), UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 3, true, 0, self.Parent)
+	local guiObj = createGuiInstance("Frame", name, self.OptionLister, frameSize, UDim2.new(0.5,0,0.5,0), Vector2.new(0.5,0.5), 3, true, 0, self.Parent)
 	guiObj.LayoutOrder = layoutOrder
 	addPadding(guiObj, 10,10,0,0)
 	
